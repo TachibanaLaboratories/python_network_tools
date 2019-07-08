@@ -29,8 +29,8 @@ def change_mac(interface, new_mac):
 #check current mac address
 def get_current_mac(interface):
     ip_result = subprocess.check_output(["ip", "addr", "show", "dev", interface])
-    mac_address_result = re.search(r"\w\w:\w\w:\w\w:\w\w:\w\w:\w\w", ip_result)
-    return mac_address_result
+    mac_address_result = re.search(r"\w\w:\w\w:\w\w:\w\w:\w\w:\w\w", ip_result.decode('utf-8'))
+    return mac_address_result.group(0)
 
 
 #compare intended mac address with current mac address
