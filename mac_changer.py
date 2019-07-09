@@ -13,9 +13,9 @@ def get_arguments():
     options = parser.parse_args()
 
     if (not options.interface):
-        print("[-] Please specify an interface")
+        parser.error("[-] Please specify an interface")
     elif (not options.new_mac):
-        print("[-] please specify a new MAC address")
+        parser.error("[-] please specify a new MAC address")
     else:   
         return options
 
@@ -36,7 +36,7 @@ def get_current_mac(interface):
 #compare intended mac address with current mac address
 def check_mac_changed(old_mac, new_mac):
     if (old_mac == new_mac):
-        print("[+] MAC has been been updated to" + new_mac)
+        print("[+] MAC has been been updated to " + new_mac)
     else:
         print("[-]" + old_mac + " has not been updated to " + new_mac)
 
@@ -44,4 +44,4 @@ def check_mac_changed(old_mac, new_mac):
 options = get_arguments()
 change_mac(options.interface, options.new_mac)
 current_mac = get_current_mac(options.interface)
-check_mac_changed(current_mac, options.new_mac)
+check_mac_changed(current_mac, options.new_mac.lower())
