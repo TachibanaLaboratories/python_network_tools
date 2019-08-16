@@ -48,13 +48,13 @@ def drop_packet(packet):
     if scapy_packet.haslayer(scapy.IP):
         if ((string.strip(scapy_packet[scapy.IP].src) not in ip_whitelist) and (string.strip(scapy_packet[scapy.IP].dst) not in ip_whitelist)):
             sys.stdout.write("\033[1;31m")
-            print("packet dropped, src: " + scapy_packet[scapy.IP].src + " dst: " + scapy_packet[scapy.IP].dst)
+            print("packet dropped  src: " + scapy_packet[scapy.IP].src + " dst: " + scapy_packet[scapy.IP].dst)
             sys.stdout.write("\033[0;31m")
             packet.drop()
         else:
 
             sys.stdout.write("\033[1;32m")
-            print("packet accepted, src: " + scapy_packet[scapy.IP].src + " dst: " + scapy_packet[scapy.IP].dst) 
+            print("packet accepted src: " + scapy_packet[scapy.IP].src + " dst: " + scapy_packet[scapy.IP].dst) 
             sys.stdout.write("\033[1;32m")
             packet.accept()
              
