@@ -3,15 +3,16 @@
 import scapy.all as scapy
 import argparse
 
-"""
-A function that performs an ARP request on the broadcast address and receives
-a reply
 
-:param target_ip: the IP address or IP address range to perform ARP request upon
-:returns: the packet containing the reply to the ARP request
-"""
 
 def scan(target_ip):
+    """
+    A function that performs an ARP request on the broadcast address and receives
+    a reply
+
+    :param target_ip: the IP address or IP address range to perform ARP request upon
+    :returns: the packet containing the reply to the ARP request
+    """
     arp_request = scapy.ARP(pdst=target_ip)
     broadcast_request = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
     arp_request_broadcast_packet = broadcast_request/arp_request
@@ -19,11 +20,12 @@ def scan(target_ip):
     return answered_packets
 
 
-"""
-:return: the IP address argument supplied from the terminal
-"""
+
 
 def get_args():
+    """
+    :return: the IP address argument supplied from the terminal
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--address", dest="ip_address", help="Specify the IP address or"
                                                             "IP address range to be scanned")
@@ -34,13 +36,14 @@ def get_args():
         return arguments
 
 
-"""
-A function the prints the ARP request to the terminal
-:param packet: the packet containing the reply to the ARP request
-"""
+
 
 
 def parse_packets(packet):
+    """
+    A function the prints the ARP request to the terminal
+    :param packet: the packet containing the reply to the ARP request
+    """
     reply_dict_list = []
     for element in packet:
         packet_dict_entry = {"ip":element[1].psrc, "mac":element[1].hwsrc}
