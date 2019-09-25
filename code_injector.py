@@ -6,6 +6,7 @@ import argparse
 import subprocess
 from scapy.layers import http
 import re
+import zlib
 
 
 def run():
