@@ -19,8 +19,8 @@ def get_args():
 	args = parser.parse_args()
 	
 	if args._get_kwargs()[0][1] is None:
-		 parser.error("[-] no IP addresses provided for whitelist")
-		 sys.exit(0)
+		 parser.error("[-] no IP addresses provided for whitelist, dropping all packets in queue")
+		 #sys.exit(0) this shouldn't be here
 	return args
 
 
@@ -44,7 +44,8 @@ def set_whitelist():
 def drop_packet(packet):
 
 	scapy_packet = scapy.IP(packet.get_payload())
-	ip_whitelist = set_whitelist()
+	if set_whitelist() not None:
+		ip_whitelist = set_whitelist()
 	if scapy_packet.haslayer(scapy.IP):
 		if ((string.strip(scapy_packet[scapy.IP].src) not in ip_whitelist) and (string.strip(scapy_packet[scapy.IP].dst) not in ip_whitelist)):
 			sys.stdout.write("\033[1;31m")

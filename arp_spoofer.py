@@ -17,7 +17,7 @@ def get_mac(dest_ip):
 	arp_request = scapy.ARP(pdst=dest_ip)
 	broadcast_request = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
 	arp_request_broadcast_packet = broadcast_request / arp_request
-	answered_packets = scapy.srp(arp_request_broadcast_packet, timeout=1, verbose=True)[0]
+	answered_packets = scapy.srp(arp_request_broadcast_packet, timeout=1, verbose=False)[0]
 	reply_dict_list = []
 
 	for element in answered_packets:
@@ -29,6 +29,9 @@ def get_mac(dest_ip):
 	else:
 		return reply_dict_list
 
+def up_status(target_ip):
+	#does a ping of all the targets every so often and displays whether or not that network interface is up or down
+	pass
 
 
 
@@ -108,6 +111,7 @@ def execute():
 					time.sleep(2)
 					print("\r[+] Packets sent: " + str(packet_count), end="")
 					packet_count += 2
+			# do status check here
 		except KeyboardInterrupt:
 			for dict_entry in target_mac_list:
 				if dict_entry["ip"] != arguments.source_ip:
