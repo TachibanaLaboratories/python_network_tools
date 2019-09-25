@@ -17,7 +17,7 @@ def get_mac(dest_ip):
 	arp_request = scapy.ARP(pdst=dest_ip)
 	broadcast_request = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
 	arp_request_broadcast_packet = broadcast_request / arp_request
-	answered_packets = scapy.srp(arp_request_broadcast_packet, timeout=1, verbose=False)[0]
+	answered_packets = scapy.srp(arp_request_broadcast_packet, timeout=1, verbose=True)[0]
 	reply_dict_list = []
 
 	for element in answered_packets:
