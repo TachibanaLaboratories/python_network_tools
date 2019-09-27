@@ -55,10 +55,8 @@ def intercept_packets(packet):
 
 		if (scapy_packet.haslayer(http.HTTPRequest)):
 		   # print(scapy_packet.show())
-		   	http_request = scapy_packet[http.HTTPRequest]
 			if scapy_packet[scapy.TCP].dport == 80:
-				http_request.Accept_Encoding = "" #this field should be able to be toggled or something
-				new_packet = set_http(scapy_packet, http_request)
+				new_packet = set_http_request_header(scapy_packet)
 				packet.set_payload(str(new_packet))
 				
 				print("req")
@@ -67,7 +65,7 @@ def intercept_packets(packet):
 			load = scapy_packet[scapy.Raw].load
 
 			if (scapy_packet[scapy.TCP].sport == 80):
-				new_packet = set_load(scapy_packet, load, payload)
+				new_packet = set_response_headers_and_load(scapy_packet, load, payload)
 				packet.set_payload(str(new_packet))
 				#new_packet[scapy.IP].show()
 				print(new_packet[http.HTTPResponse].Content_Length)
@@ -112,7 +110,7 @@ def set_response_header_value_content_length(packet, payload):
 		packet[http.HTTPResponse].Content_Length = new_content_length
 		return packet
 
-def set_load(packet, load, payload):
+def set_response_headers_and_load(packet, load, payload):
 	try:
 		#compressed_load = gzip_load(load)
 		#load = set_response_content_length(load, payload)
@@ -129,7 +127,8 @@ def set_load(packet, load, payload):
 		print("packet type:", type(packet))
 		PrintException()
 
-def set_http(packet, http_layer):
+def set_http_request_header(packet):
+	packet[http.HTTPRequest].Accept_Encoding = ""
 	del packet[scapy.IP].len
 	del packet[scapy.IP].chksum
 	del packet[scapy.TCP].chksum
