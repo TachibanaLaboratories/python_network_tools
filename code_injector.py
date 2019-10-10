@@ -116,7 +116,6 @@ def set_response_headers_and_load(packet, load, payload):
 		#load = set_response_content_length(load, payload)
 		packet = set_response_header_value_content_length(packet, payload)
 		#inject payload into raw layer
-
 		load.replace("<body>", payload)
 		packet[scapy.Raw].load = load
 		del packet[scapy.IP].len
