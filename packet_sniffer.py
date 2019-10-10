@@ -112,7 +112,7 @@ class PacketSniffer(object):
 							#print("http layer check")
 							packet_summary = self.filter_http_packet(packet, target) ## doing the http test case first
 							if packet_summary is not None:
-								self.display_outputs(packet_summary, protocol)
+								self.display_outputs(packet_summary, protocol, packet)
 		except:
 			self.print_exception()
 
@@ -121,7 +121,7 @@ class PacketSniffer(object):
 		scapy.sniff("eth0", store=False, prn=self.get_protocol_data) #prn=function
 				
 
-	def display_outputs(self, packet_summary, protocol):
+	def display_outputs(self, packet_summary, protocol, packet):
 		if (protocol == "HTTPRequest" or protocol == "HTTPResponse"):
 			try:
 				
