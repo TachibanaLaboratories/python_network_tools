@@ -61,7 +61,7 @@ def intercept_packets(packet):
 	scapy_packet = scapy.IP(packet.get_payload())
 	
 	try:
-		if (scapy_packet.haslayer(scapy.TCP)):
+		if (scapy_packet.haslayer(scapy.TCP) and scapy_packet.haslayer(http.HTTPRequest)):
 			
 			if scapy_packet[scapy.TCP].dport == 80:
 				new_packet = set_http_request_header(scapy_packet)
@@ -86,8 +86,6 @@ def intercept_packets(packet):
 def forward_packet(fragment_list, packet):
 	for index, packet_fragment in enumerate(fragment_list):
 		print("fragment", index, "##############################################")
-		#packet_fragment.show() # useful
-		#packet.set_payload(str(packet_fragment))
 		scapy.send(packet_fragment)
 	packet.drop()
 
