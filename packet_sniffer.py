@@ -7,10 +7,6 @@ import linecache
 
 
 
-
-
-
-
 class TCPStream(object):
 	""" This class handles TCP streams and the membership of packets in those streams"""
 	def __init__(self, stack_timeout):
@@ -144,8 +140,6 @@ class PacketSniffer(object):
 				print("continuing...")
 				self.print_exception()
 				
-
-
 
 
 	def filter_ARP_packet(packet, target):
@@ -300,7 +294,7 @@ class AttackMapper(object):
 
 
 def initialise():
-	target = "192.168.0.20"
+	target = "192.168.1.145"
 	packet_sniffer = PacketSniffer(target, "HTTPRequest", "HTTPResponse")
 	packet_sniffer.sniff()
 
